@@ -6,9 +6,12 @@
 
 **A powerful MCP (Model Context Protocol) server that provides comprehensive tools to interact with an Unraid server's GraphQL API.**
 
+> [!NOTE]
+> This repository is a fork of [jmagar/unraid-mcp](https://github.com/jmagar/unraid-mcp) but with the currently up-to-date GraphQL schema.
+
 ## ✨ Features
 
-- 🔧 **26 Tools**: Complete Unraid management through MCP protocol
+- 🔧 **44 Tools**: Complete Unraid management through MCP protocol
 - 🏗️ **Modular Architecture**: Clean, maintainable, and extensible codebase  
 - ⚡ **High Performance**: Async/concurrent operations with optimized timeouts
 - 🔄 **Real-time Data**: WebSocket subscriptions for live log streaming
@@ -174,7 +177,17 @@ UNRAID_VERIFY_SSL=true  # true, false, or path to CA bundle
 - `get_unraid_variables()` - System variables and settings
 - `get_network_config()` - Network configuration and access URLs
 - `get_registration_info()` - Unraid registration details
-- `get_connect_settings()` - Unraid Connect configuration
+
+### Storage Management
+- `get_shares_info()` - User shares information
+- `list_physical_disks()` - Physical disk discovery
+- `get_disk_details(disk_id)` - SMART data and detailed disk info
+- `list_available_log_files()` - Available system logs
+- `get_logs(path, tail_lines)` - Log file content retrieval
+- `get_share_details(name)` - Detailed share information
+- `get_pool_details(name)` - Detailed pool information
+- `get_cache_pool_details(name)` - Detailed cache pool information
+- `get_filesystem_details(path)` - Filesystem usage and details
 
 ### Docker Container Management  
 - `list_docker_containers()` - List all containers with caching options
@@ -186,23 +199,41 @@ UNRAID_VERIFY_SSL=true  # true, false, or path to CA bundle
 - `manage_vm(id, action)` - VM lifecycle (start/stop/pause/resume/reboot)
 - `get_vm_details(identifier)` - Detailed VM information
 
-### Storage & File Systems
-- `get_shares_info()` - User shares information
-- `list_physical_disks()` - Physical disk discovery
-- `get_disk_details(disk_id)` - SMART data and detailed disk info
-
-### Monitoring & Diagnostics
-- `health_check()` - Comprehensive system health assessment
-- `get_notifications_overview()` - Notification counts by severity
-- `list_notifications(type, offset, limit)` - Filtered notification listing
-- `list_available_log_files()` - Available system logs
-- `get_logs(path, tail_lines)` - Log file content retrieval
-
 ### Cloud Storage (RClone)
 - `list_rclone_remotes()` - List configured remotes
 - `get_rclone_config_form(provider)` - Configuration schemas
 - `create_rclone_remote(name, type, config)` - Create new remote
 - `delete_rclone_remote(name)` - Remove existing remote
+
+### Health Monitoring
+- `health_check()` - Comprehensive system health assessment
+
+### Connect Management
+- `get_connect_settings()` - Unraid Connect configuration
+- `get_connect_status()` - Connection status
+- `get_connect_vpn_config()` - VPN configuration details
+- `update_connect_settings(settings)` - Update Connect settings
+
+### Notifications
+- `get_notifications_overview()` - Notification counts by severity
+- `list_notifications(type, offset, limit)` - Filtered notification listing
+- `dismiss_notification(id)` - Dismiss a notification
+
+### Plugins
+- `list_plugins()` - List installed plugins
+- `get_plugin_details(name)` - Detailed plugin information
+- `manage_plugin(name, action)` - Install/update/remove plugins
+
+### Security
+- `get_security_settings()` - Security configuration
+- `list_ssl_certificates()` - List SSL certificates
+- `get_certificate_details(id)` - Detailed certificate info
+- `update_security_settings(settings)` - Update security settings
+
+### UPS Management
+- `get_ups_status()` - UPS status and metrics
+- `get_ups_settings()` - UPS configuration
+- `update_ups_settings(settings)` - Update UPS settings
 
 ### Real-time Subscriptions & Resources
 - `test_subscription_query(query)` - Test GraphQL subscriptions
@@ -240,7 +271,12 @@ unraid-mcp/
 │   │   ├── storage.py        # Storage & monitoring
 │   │   ├── health.py         # Health checks
 │   │   ├── virtualization.py # VM management
-│   │   └── rclone.py         # Cloud storage
+│   │   ├── rclone.py         # Cloud storage
+│   │   ├── connect.py        # Connect management
+│   │   ├── notifications.py  # Notification management
+│   │   ├── plugins.py        # Plugin management
+│   │   ├── security.py       # Security management
+│   │   └── ups.py            # UPS management
 │   └── server.py             # FastMCP server setup
 ├── logs/                     # Log files (auto-created)
 ├── dev.sh                    # Development script  
