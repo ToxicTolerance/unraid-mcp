@@ -229,16 +229,12 @@ def register_docker_tools(mcp: FastMCP) -> None:
                         container = find_container_by_identifier(container_id, containers)
 
                         if container:
-                            return {
-                                "operation_result": {
-                                    "id": container_id,
-                                    "names": container.get("names", []),
-                                },
-                                "container_details": container,
-                                "success": True,
-                                "message": f"Container {action} operation was already complete - current state returned",
-                                "idempotent": True,
-                            }
+                            # Merge container details into top level
+                            result = dict(container)
+                            result["success"] = True
+                            result["message"] = f"Container {action} operation was already complete - current state returned"
+                            result["idempotent"] = True
+                            return result
 
                 except Exception as lookup_error:
                     logger.warning(
@@ -246,8 +242,7 @@ def register_docker_tools(mcp: FastMCP) -> None:
                     )
 
                 return {
-                    "operation_result": {"id": container_id},
-                    "container_details": None,
+                    "id": container_id,
                     "success": True,
                     "message": f"Container {action} operation was already complete",
                     "idempotent": True,
@@ -259,7 +254,7 @@ def register_docker_tools(mcp: FastMCP) -> None:
             ):
                 raise ToolError(f"Failed to execute {action} operation on container")
 
-            operation_result = operation_response["docker"][mutation_name]
+            # Normal successful operation - the mutation succeeded
             logger.info(f"Container {action} operation completed for {container_id}")
 
             # Step 2: Wait briefly for state to propagate, then fetch current container details
@@ -297,12 +292,11 @@ def register_docker_tools(mcp: FastMCP) -> None:
                         container = find_container_by_identifier(container_id, containers)
                         if container:
                             logger.info(f"Found updated container state for {container_id}")
-                            return {
-                                "operation_result": operation_result,
-                                "container_details": container,
-                                "success": True,
-                                "message": f"Container {action} operation completed successfully",
-                            }
+                            # Merge container details into top level
+                            result = dict(container)
+                            result["success"] = True
+                            result["message"] = f"Container {action} operation completed successfully"
+                            return result
 
                     # If not found in this attempt, wait and retry
                     if attempt < max_retries - 1:
@@ -325,8 +319,7 @@ def register_docker_tools(mcp: FastMCP) -> None:
                             f"Could not retrieve updated container details after {action}, but operation succeeded"
                         )
                         return {
-                            "operation_result": operation_result,
-                            "container_details": None,
+                            "id": container_id,
                             "success": True,
                             "message": f"Container {action} operation completed, but updated state could not be retrieved",
                             "warning": "Container state query failed after operation - this may be due to timing or the container not being found in the updated state",
@@ -337,8 +330,7 @@ def register_docker_tools(mcp: FastMCP) -> None:
                 f"Container {container_id} not found in any retry attempt after {action}"
             )
             return {
-                "operation_result": operation_result,
-                "container_details": None,
+                "id": container_id,
                 "success": True,
                 "message": f"Container {action} operation completed, but container not found in subsequent queries",
                 "warning": "Container not found in updated state - this may indicate the operation succeeded but container is no longer listed",

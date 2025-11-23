@@ -146,33 +146,6 @@ async def _get_system_info() -> dict[str, Any]:
         if not raw_info:
             raise ToolError("No system info returned from Unraid API")
 
-        # Process for human-readable output
-        summary: dict[str, Any] = {}
-        if raw_info.get("os"):
-            os_info = raw_info["os"]
-            summary["os"] = (
-                f"{os_info.get('distro', '')} {os_info.get('release', '')} ({os_info.get('platform', '')}, {os_info.get('arch', '')})"
-            )
-            summary["hostname"] = os_info.get("hostname")
-            summary["uptime"] = os_info.get("uptime")
-
-        if raw_info.get("cpu"):
-            cpu_info = raw_info["cpu"]
-            summary["cpu"] = (
-                f"{cpu_info.get('manufacturer', '')} {cpu_info.get('brand', '')} ({cpu_info.get('cores')} cores, {cpu_info.get('threads')} threads)"
-            )
-
-        if raw_info.get("memory") and raw_info["memory"].get("layout"):
-            mem_layout = raw_info["memory"]["layout"]
-            summary["memory_layout_details"] = []
-            for stick in mem_layout:
-                summary["memory_layout_details"].append(
-                    f"Bank {stick.get('bank', '?')}: Type {stick.get('type', '?')}, Speed {stick.get('clockSpeed', '?')}MHz, Manufacturer: {stick.get('manufacturer','?')}, Part: {stick.get('partNum', '?')}"
-                )
-            summary["memory_summary"] = "Stick layout details retrieved."
-        else:
-            summary["memory_summary"] = "Memory information not available."
-
         # Prune large data fields to prevent LLM context overflow
         if raw_info.get("display") and raw_info["display"].get("case"):
             raw_info["display"]["case"].pop("base64", None)
@@ -184,8 +157,35 @@ async def _get_system_info() -> dict[str, Any]:
 
         raw_info.pop("versions", None)
 
-        # Include a key for the full details if needed by an LLM for deeper dives
-        return {"summary": summary, "details": raw_info}
+        # Add human-readable summary fields to the main response
+        if raw_info.get("os"):
+            os_info = raw_info["os"]
+            raw_info["os_summary"] = (
+                f"{os_info.get('distro', '')} {os_info.get('release', '')} ({os_info.get('platform', '')}, {os_info.get('arch', '')})"
+            )
+            raw_info["hostname_summary"] = os_info.get("hostname")
+            raw_info["uptime_summary"] = os_info.get("uptime")
+
+        if raw_info.get("cpu"):
+            cpu_info = raw_info["cpu"]
+            raw_info["cpu_summary"] = (
+                f"{cpu_info.get('manufacturer', '')} {cpu_info.get('brand', '')} ({cpu_info.get('cores')} cores, {cpu_info.get('threads')} threads)"
+            )
+
+        if raw_info.get("memory") and raw_info["memory"].get("layout"):
+            mem_layout = raw_info["memory"]["layout"]
+            memory_details = []
+            for stick in mem_layout:
+                memory_details.append(
+                    f"Bank {stick.get('bank', '?')}: Type {stick.get('type', '?')}, Speed {stick.get('clockSpeed', '?')}MHz, Manufacturer: {stick.get('manufacturer','?')}, Part: {stick.get('partNum', '?')}"
+                )
+            raw_info["memory_layout_summary"] = memory_details
+            raw_info["memory_summary"] = "Stick layout details retrieved."
+        else:
+            raw_info["memory_summary"] = "Memory information not available."
+
+        # Return the flat structure with all fields at top level
+        return raw_info
 
     except Exception as e:
         logger.error(f"Error in get_system_info: {e}", exc_info=True)
@@ -228,42 +228,41 @@ async def _get_array_status() -> dict[str, Any]:
         if not raw_array_info:
             raise ToolError("No array information returned from Unraid API")
 
-        summary: dict[str, Any] = {}
-        summary["state"] = raw_array_info.get("state")
+        # Helper to format KB into TB/GB/MB
+        def format_kb(k: Any) -> str:
+            if k is None:
+                return "N/A"
+            try:
+                k = int(k)
+            except (ValueError, TypeError):
+                return str(k)
+
+            if k >= 1024 * 1024 * 1024:
+                return f"{k / (1024*1024*1024):.2f} TB"
+            if k >= 1024 * 1024:
+                return f"{k / (1024*1024):.2f} GB"
+            if k >= 1024:
+                return f"{k / 1024:.2f} MB"
+            return f"{k} KB"
+
+        # Add summary fields to the main response
+        raw_array_info["state_summary"] = raw_array_info.get("state")
 
         if raw_array_info.get("capacity") and raw_array_info["capacity"].get("kilobytes"):
             kb_cap = raw_array_info["capacity"]["kilobytes"]
+            raw_array_info["capacity_total_formatted"] = format_kb(kb_cap.get("total"))
+            raw_array_info["capacity_used_formatted"] = format_kb(kb_cap.get("used"))
+            raw_array_info["capacity_free_formatted"] = format_kb(kb_cap.get("free"))
 
-            # Helper to format KB into TB/GB/MB
-            def format_kb(k: Any) -> str:
-                if k is None:
-                    return "N/A"
-                try:
-                    k = int(k)
-                except (ValueError, TypeError):
-                    return str(k)
-
-                if k >= 1024 * 1024 * 1024:
-                    return f"{k / (1024*1024*1024):.2f} TB"
-                if k >= 1024 * 1024:
-                    return f"{k / (1024*1024):.2f} GB"
-                if k >= 1024:
-                    return f"{k / 1024:.2f} MB"
-                return f"{k} KB"
-
-            summary["capacity_total"] = format_kb(kb_cap.get("total"))
-            summary["capacity_used"] = format_kb(kb_cap.get("used"))
-            summary["capacity_free"] = format_kb(kb_cap.get("free"))
-
-        summary["num_parity_disks"] = len(raw_array_info.get("parities", []))
-        summary["num_data_disks"] = len(raw_array_info.get("disks", []))
-        summary["num_cache_pools"] = len(
+        raw_array_info["num_parity_disks"] = len(raw_array_info.get("parities", []))
+        raw_array_info["num_data_disks"] = len(raw_array_info.get("disks", []))
+        raw_array_info["num_cache_pools"] = len(
             raw_array_info.get("caches", [])
         )  # Note: caches are pools, not individual cache disks
 
         if raw_array_info.get("parityCheckStatus"):
             pcs = raw_array_info["parityCheckStatus"]
-            summary["parity_check"] = {
+            raw_array_info["parity_check_summary"] = {
                 "status": pcs.get("status"),
                 "progress": f"{pcs.get('progress', 0)}%",
                 "speed": pcs.get("speed"),
@@ -331,10 +330,11 @@ async def _get_array_status() -> dict[str, Any]:
         else:
             overall_health = "HEALTHY"
 
-        summary["overall_health"] = overall_health
-        summary["health_summary"] = health_summary
+        raw_array_info["overall_health"] = overall_health
+        raw_array_info["health_summary"] = health_summary
 
-        return {"summary": summary, "details": raw_array_info}
+        # Return the flat structure with all fields at top level
+        return raw_array_info
 
     except Exception as e:
         logger.error(f"Error in get_array_status: {e}", exc_info=True)

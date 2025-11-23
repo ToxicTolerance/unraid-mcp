@@ -170,7 +170,7 @@ def register_storage_tools(mcp: FastMCP) -> None:
             if not raw_disk:
                 raise ToolError(f"Disk '{disk_id}' not found")
 
-            # Process disk information for human-readable output
+            # Add human-readable formatted fields to the disk object
             def format_bytes(bytes_value: int | None) -> str:
                 if bytes_value is None:
                     return "N/A"
@@ -181,31 +181,18 @@ def register_storage_tools(mcp: FastMCP) -> None:
                     value /= 1024.0
                 return f"{value:.2f} EB"
 
-            summary = {
-                "disk_id": raw_disk.get("id"),
-                "device": raw_disk.get("device"),
-                "name": raw_disk.get("name"),
-                "vendor": raw_disk.get("vendor"),
-                "serial_number": raw_disk.get("serialNum"),
-                "size_formatted": format_bytes(raw_disk.get("size")),
-                "temperature": (
-                    f"{raw_disk.get('temperature')}°C" if raw_disk.get("temperature") else "N/A"
-                ),
-                "interface_type": raw_disk.get("interfaceType"),
-                "smart_status": raw_disk.get("smartStatus"),
-                "is_spinning": raw_disk.get("isSpinning"),
-                "firmware": raw_disk.get("firmwareRevision"),
-                "partition_count": len(raw_disk.get("partitions", [])),
-                "total_partition_size": format_bytes(
-                    sum(p.get("size", 0) for p in raw_disk.get("partitions", []) if p.get("size"))
-                ),
-            }
+            # Add formatted fields directly to the response
+            raw_disk["size_formatted"] = format_bytes(raw_disk.get("size"))
+            raw_disk["temperature_formatted"] = (
+                f"{raw_disk.get('temperature')}°C" if raw_disk.get("temperature") else "N/A"
+            )
+            raw_disk["partition_count"] = len(raw_disk.get("partitions", []))
+            raw_disk["total_partition_size_formatted"] = format_bytes(
+                sum(p.get("size", 0) for p in raw_disk.get("partitions", []) if p.get("size"))
+            )
 
-            return {
-                "summary": summary,
-                "partitions": raw_disk.get("partitions", []),
-                "details": raw_disk,
-            }
+            # Return the flat structure with all fields at top level
+            return raw_disk
 
         except Exception as e:
             logger.error(f"Error in get_disk_details for {disk_id}: {e}", exc_info=True)
