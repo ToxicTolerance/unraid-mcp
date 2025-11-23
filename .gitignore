@@ -1,0 +1,35 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.venv-backend
+.env
+.env.local
+*.log
+logs/
+.bivvy
+.cursor
+
+# Serena IDE configuration
+.serena/
+
+# Google OAuth client secrets
+client_secret_*.apps.googleusercontent.com.json
+
+web-ui/frontend/node_modules
+web-ui/backend/.venv-backend/
+.pnpm-store/
+
+# Testing and Coverage
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
